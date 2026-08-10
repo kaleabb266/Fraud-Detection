@@ -8,6 +8,11 @@ models/
 reports/
 mlruns/
 *.log
-Data/ 
+Data/*
+!Data/Fraud_Data.csv
+!Data/IpAddress_to_Country.csv
+!Data/creditcard1.csv
 10 Academy - KAIM - Week 8&9.docx
+models/*
+!models/*.joblib
 
