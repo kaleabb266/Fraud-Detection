@@ -83,6 +83,10 @@ curl -X POST http://127.0.0.1:5000/predict ^
 
 ## Dashboard
 
+A live deployment is available at [fraud-detection-dashboard-xatf.onrender.com](https://fraud-detection-dashboard-xatf.onrender.com/).
+
+To run it locally:
+
 ```bash
 python app/dashboard.py
 ```
