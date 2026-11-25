@@ -445,8 +445,13 @@ def load_ecommerce_model() -> tuple[object, str]:
     """Load the champion once. Prefer the NumPy-only export: unpickling the
     scikit-learn pipeline imports scikit-learn (~70 MB), too much for 256 MiB."""
     if PortableModel.exists(PORTABLE_ECOM_MODEL):
-        model = PortableModel.load(PORTABLE_ECOM_MODEL)
-        return model, model.model_name
+        try:
+            model = PortableModel.load(PORTABLE_ECOM_MODEL)
+            return model, model.model_name
+        except Exception as exc:  # corrupt, mismatched or wrong-version export
+            if not JOBLIB_ECOM_MODEL.exists():
+                raise
+            print(f"[model] portable export unusable ({exc}); falling back to joblib", flush=True)
     artifact = joblib.load(JOBLIB_ECOM_MODEL)
     return artifact["pipeline"], artifact.get("model_name", "trained pipeline")
 

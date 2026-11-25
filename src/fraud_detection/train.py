@@ -19,7 +19,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 from .config import CREDITCARD_FULL_ZIP_PATH, MODELS_DIR, RANDOM_STATE, REPORTS_DIR, TEST_SIZE
 from .data import load_creditcard, load_ecommerce_enriched
-from .portable import export_pipeline
+from .portable import export_pipeline, remove_export
 from .features import (
     ECOMMERCE_CATEGORICAL,
     creditcard_feature_target,
@@ -139,8 +139,10 @@ def train(
             extra={"dataset": dataset, "model_name": best_name, "features": X.columns.tolist()},
         )
         print(f"Saved NumPy-only export to {json_path.with_suffix('')}.{{json,npz}}")
-    except ValueError as exc:
-        print(f"Skipped NumPy-only export: {exc}")
+    except Exception as exc:  # the export is optional; the joblib model is already saved
+        # Remove any older export so the dashboard can't keep scoring with a stale model.
+        remove_export(MODELS_DIR / f"{dataset}_model_portable")
+        print(f"Skipped NumPy-only export ({type(exc).__name__}: {exc}); removed any stale export")
     return model_path
 
 
