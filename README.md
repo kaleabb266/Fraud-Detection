@@ -96,6 +96,6 @@ Open `http://127.0.0.1:8050/`.
 ## Docker
 
 ```bash
-docker build -t fraud-detection-model .
-docker run -p 5000:5000 fraud-detection-model
+docker build -t fraud-detection-dashboard .
+docker run -p 8050:8050 fraud-detection-dashboard
 ```

@@ -1,15 +1,19 @@
 FROM python:3.12-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HOST=0.0.0.0 \
+    PORT=8050
+
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-core.txt .
+RUN pip install --no-cache-dir -r requirements-core.txt
 
 COPY app ./app
 COPY src ./src
-COPY models ./models
+COPY Data ./Data
 
-EXPOSE 5000
+EXPOSE 8050
 
-CMD ["python", "app/serve_model.py", "--dataset", "ecommerce", "--model", "models/ecommerce_best_model.joblib"]
-
+CMD ["python", "app/dashboard.py"]
