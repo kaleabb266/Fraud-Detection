@@ -14,7 +14,8 @@ from flask import Flask, jsonify
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from fraud_detection.data import load_creditcard, load_ecommerce_enriched
+from fraud_detection import data as csv_data
+from fraud_detection import db
 from fraud_detection.features import add_ecommerce_features
 
 
@@ -38,8 +39,17 @@ PALETTE = {
 server = Flask(__name__)
 
 
+DATA_SOURCE = "postgres" if db.database_url() else "csv"
+
+
 def load_dashboard_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    ecommerce = load_ecommerce_enriched()
+    if DATA_SOURCE == "postgres":
+        ecommerce = db.load_ecommerce_enriched()
+        # The dashboard only charts time, amount and label; skip V1-V28.
+        creditcard = db.load_creditcard(columns=["Time", "Amount", "Class"])
+    else:
+        ecommerce = csv_data.load_ecommerce_enriched()
+        creditcard = csv_data.load_creditcard()
     ecommerce["purchase_time"] = pd.to_datetime(ecommerce["purchase_time"], errors="coerce")
     ecommerce["signup_time"] = pd.to_datetime(ecommerce["signup_time"], errors="coerce")
     ecommerce["purchase_date"] = ecommerce["purchase_time"].dt.date
@@ -48,7 +58,6 @@ def load_dashboard_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     ).clip(lower=0)
     ecommerce["is_instant"] = (ecommerce["signup_to_purchase_hours"] <= (1 / 3600)).astype(int)
 
-    creditcard = load_creditcard()
     creditcard["hour"] = ((creditcard["Time"] // 3600) % 24).astype(int)
     creditcard["day"] = (creditcard["Time"] // 86400).astype(int) + 1
     return ecommerce, creditcard
@@ -160,6 +169,7 @@ def filter_card(df: pd.DataFrame, hours, amount_range) -> pd.DataFrame:
 def summary():
     return jsonify(
         {
+            "data_source": DATA_SOURCE,
             "ecommerce": {
                 "transactions": int(len(ecom_df)),
                 "fraud_cases": int(ecom_df["class"].sum()),

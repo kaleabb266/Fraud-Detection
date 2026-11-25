@@ -12,8 +12,11 @@ RUN pip install --no-cache-dir -r requirements-core.txt
 
 COPY app ./app
 COPY src ./src
+COPY scripts ./scripts
 COPY Data ./Data
 
 EXPOSE 8050
 
-CMD ["python", "app/dashboard.py"]
+# Seed Postgres on first start (no-op once loaded, or without DATABASE_URL),
+# then serve the dashboard.
+CMD ["sh", "-c", "python scripts/seed_database.py && exec python app/dashboard.py"]

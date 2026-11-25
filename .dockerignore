@@ -4,6 +4,6 @@ __pycache__
 *.pyc
 reports
 mlruns
-Data/*.zip
+Technical Content
 Data/*.xlsx
 

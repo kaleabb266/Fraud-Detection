@@ -93,6 +93,16 @@ python app/dashboard.py
 
 Open `http://127.0.0.1:8050/`.
 
+### PostgreSQL data source
+
+When `DATABASE_URL` is set, the dashboard reads from PostgreSQL instead of the CSV files. Seed the database once (re-running skips finished tables; `--force` rebuilds everything):
+
+```bash
+python scripts/seed_database.py
+```
+
+The seeder loads `Data/Fraud_Data.csv`, `Data/IpAddress_to_Country.csv` and the full 284,807-row `Data/creditcard.csv.zip` into the tables `fraud_data`, `ip_address_to_country` and `creditcard`. It then builds two cleaned tables: `ecommerce_enriched` (duplicates removed, country attached) and `creditcard_clean` (duplicates removed). The Docker image runs the seeder automatically before starting the dashboard. `GET /api/summary` reports which source is in use (`data_source`).
+
 ## Docker
 
 ```bash

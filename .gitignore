@@ -12,6 +12,8 @@ Data/*
 !Data/Fraud_Data.csv
 !Data/IpAddress_to_Country.csv
 !Data/creditcard1.csv
+!Data/creditcard.csv.zip
+Technical Content/
 10 Academy - KAIM - Week 8&9.docx
 models/*
 !models/*.joblib
