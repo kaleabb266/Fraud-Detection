@@ -40,15 +40,58 @@ ECOM_COLUMNS = [
 
 
 def database_url() -> str | None:
+    """Return a truthy marker when a database is configured (URL or PG* vars)."""
     url = os.environ.get("DATABASE_URL", "").strip()
-    return url or None
+    if url:
+        return url
+    if os.environ.get("PGHOST") and os.environ.get("PGUSER"):
+        return "postgresql://"  # configured through libpq PG* variables
+    return None
+
+
+def _parse_url(url: str) -> dict:
+    """Parse postgresql://user:password@host:port/dbname, tolerating a raw
+    (not percent-encoded) password that contains ':' or '@'."""
+    from urllib.parse import unquote
+
+    rest = url.split("://", 1)[1] if "://" in url else url
+    rest, _, query = rest.partition("?")
+    userinfo, _, hostpart = rest.rpartition("@")  # host never contains '@'
+    hostport, _, dbname = hostpart.partition("/")
+    host, _, port = hostport.partition(":")
+    user, _, password = userinfo.partition(":")  # usernames never contain ':'
+    params = {
+        "host": host or None,
+        "port": port or None,
+        "dbname": unquote(dbname) or None,
+        "user": unquote(user) or None,
+        "password": password or None,
+    }
+    for pair in filter(None, query.split("&")):
+        key, _, value = pair.partition("=")
+        params[key] = unquote(value)
+    return {k: v for k, v in params.items() if v is not None}
+
+
+def _connection_kwargs(url: str | None = None) -> dict:
+    # Prefer the discrete PG* variables (no URL escaping issues), then the URL.
+    if url is None and os.environ.get("PGHOST") and os.environ.get("PGPASSWORD"):
+        return {
+            "host": os.environ["PGHOST"],
+            "port": os.environ.get("PGPORT", "5432"),
+            "dbname": os.environ.get("PGDATABASE"),
+            "user": os.environ.get("PGUSER"),
+            "password": os.environ["PGPASSWORD"],
+        }
+    url = url or os.environ.get("DATABASE_URL", "")
+    return _parse_url(url) if url else {}
 
 
 @contextmanager
 def connect(url: str | None = None):
     import psycopg
 
-    conn = psycopg.connect(url or database_url(), connect_timeout=10)
+    conn = psycopg.connect(connect_timeout=10, **_connection_kwargs(url))
     try:
         yield conn
     finally:
@@ -67,7 +110,8 @@ def wait_for_database(url: str | None = None, timeout: float = 300) -> None:
         except psycopg.OperationalError as exc:
             if time.monotonic() > deadline:
                 raise
-            print(f"[db] waiting for database: {exc.__class__.__name__}", flush=True)
+            reason = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
+            print(f"[db] waiting for database: {reason}", flush=True)
             time.sleep(5)
 
 
