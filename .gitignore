@@ -4,8 +4,10 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-models/
-reports/
+models/*
+!models/*.joblib
+reports/*
+!reports/*_model_metrics.json
 mlruns/
 *.log
 Data/*
@@ -15,6 +17,3 @@ Data/*
 !Data/creditcard.csv.zip
 Technical Content/
 10 Academy - KAIM - Week 8&9.docx
-models/*
-!models/*.joblib
-

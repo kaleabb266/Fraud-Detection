@@ -17,7 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
-from .config import MODELS_DIR, RANDOM_STATE, REPORTS_DIR, TEST_SIZE
+from .config import CREDITCARD_FULL_ZIP_PATH, MODELS_DIR, RANDOM_STATE, REPORTS_DIR, TEST_SIZE
 from .data import load_creditcard, load_ecommerce_enriched
 from .features import (
     ECOMMERCE_CATEGORICAL,
@@ -51,7 +51,12 @@ def load_dataset(name: str) -> tuple[pd.DataFrame, pd.Series, list[str]]:
         X, y = ecommerce_feature_target(load_ecommerce_enriched())
         return X, y, [c for c in ECOMMERCE_CATEGORICAL if c in X.columns]
     if name == "creditcard":
-        X, y = creditcard_feature_target(load_creditcard())
+        # Prefer the full 284,807-row dataset (the same data seeded into Postgres).
+        if CREDITCARD_FULL_ZIP_PATH.exists():
+            card = pd.read_csv(CREDITCARD_FULL_ZIP_PATH).drop_duplicates().reset_index(drop=True)
+        else:
+            card = load_creditcard()
+        X, y = creditcard_feature_target(card)
         return X, y, []
     raise ValueError(f"Unknown dataset: {name}")
 

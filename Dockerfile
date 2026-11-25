@@ -14,6 +14,8 @@ COPY app ./app
 COPY src ./src
 COPY scripts ./scripts
 COPY Data ./Data
+COPY models ./models
+COPY reports ./reports
 
 EXPOSE 8050
 

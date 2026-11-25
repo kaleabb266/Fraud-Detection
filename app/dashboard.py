@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 import joblib
@@ -430,6 +431,12 @@ def models_tab() -> html.Div:
     )
 
 
+@lru_cache(maxsize=1)
+def load_ecommerce_model() -> dict:
+    """Load the champion pipeline once instead of on every scoring click."""
+    return joblib.load(MODELS_DIR / "ecommerce_best_model.joblib")
+
+
 def prediction_tab() -> html.Div:
     model_ready = (MODELS_DIR / "ecommerce_best_model.joblib").exists()
     status = "Model loaded" if model_ready else "Train ecommerce model to enable live scoring"
@@ -809,7 +816,7 @@ def score_transaction(n_clicks, purchase_value, age, source, browser, sex, count
             )
         ]
 
-    artifact = joblib.load(model_path)
+    artifact = load_ecommerce_model()
     pipe = artifact["pipeline"]
     purchase_time = pd.Timestamp("2015-07-01 12:00:00")
     signup_time = purchase_time - pd.Timedelta(hours=float(hours or 0))
