@@ -6,6 +6,8 @@ __pycache__/
 .ruff_cache/
 models/*
 !models/*.joblib
+!models/*_portable.json
+!models/*_portable.npz
 reports/*
 !reports/*_model_metrics.json
 mlruns/

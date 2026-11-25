@@ -18,6 +18,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from fraud_detection import data as csv_data
 from fraud_detection import db
 from fraud_detection.features import add_ecommerce_features
+from fraud_detection.portable import PortableModel
 
 
 REPORTS_DIR = PROJECT_ROOT / "reports"
@@ -431,14 +432,27 @@ def models_tab() -> html.Div:
     )
 
 
+PORTABLE_ECOM_MODEL = MODELS_DIR / "ecommerce_model_portable"
+JOBLIB_ECOM_MODEL = MODELS_DIR / "ecommerce_best_model.joblib"
+
+
+def ecommerce_model_available() -> bool:
+    return PortableModel.exists(PORTABLE_ECOM_MODEL) or JOBLIB_ECOM_MODEL.exists()
+
+
 @lru_cache(maxsize=1)
-def load_ecommerce_model() -> dict:
-    """Load the champion pipeline once instead of on every scoring click."""
-    return joblib.load(MODELS_DIR / "ecommerce_best_model.joblib")
+def load_ecommerce_model() -> tuple[object, str]:
+    """Load the champion once. Prefer the NumPy-only export: unpickling the
+    scikit-learn pipeline imports scikit-learn (~70 MB), too much for 256 MiB."""
+    if PortableModel.exists(PORTABLE_ECOM_MODEL):
+        model = PortableModel.load(PORTABLE_ECOM_MODEL)
+        return model, model.model_name
+    artifact = joblib.load(JOBLIB_ECOM_MODEL)
+    return artifact["pipeline"], artifact.get("model_name", "trained pipeline")
 
 
 def prediction_tab() -> html.Div:
-    model_ready = (MODELS_DIR / "ecommerce_best_model.joblib").exists()
+    model_ready = ecommerce_model_available()
     status = "Model loaded" if model_ready else "Train ecommerce model to enable live scoring"
     return html.Div(
         [
@@ -656,7 +670,7 @@ def update_ecommerce(start_date, end_date, countries, browsers, sources, sexes):
     )
     device_fig.update_layout(yaxis={"categoryorder": "total ascending"})
 
-    velocity = filtered.copy()
+    velocity = filtered[["signup_to_purchase_hours", "class"]].copy()
     velocity["velocity_bucket"] = pd.cut(
         velocity["signup_to_purchase_hours"],
         bins=[-0.01, 0.001, 1, 24, 168, 720, float("inf")],
@@ -804,8 +818,7 @@ def score_transaction(n_clicks, purchase_value, age, source, browser, sex, count
             )
         ]
 
-    model_path = MODELS_DIR / "ecommerce_best_model.joblib"
-    if not model_path.exists():
+    if not ecommerce_model_available():
         return [
             html.Div(
                 [
@@ -816,8 +829,7 @@ def score_transaction(n_clicks, purchase_value, age, source, browser, sex, count
             )
         ]
 
-    artifact = load_ecommerce_model()
-    pipe = artifact["pipeline"]
+    pipe, model_name = load_ecommerce_model()
     purchase_time = pd.Timestamp("2015-07-01 12:00:00")
     signup_time = purchase_time - pd.Timedelta(hours=float(hours or 0))
     row = pd.DataFrame(
@@ -851,7 +863,7 @@ def score_transaction(n_clicks, purchase_value, age, source, browser, sex, count
             [
                 html.H2(verdict, className=tone),
                 html.P(f"Fraud probability: {probability:.2%}"),
-                html.Span(f"Model: {pretty_model(artifact.get('model_name', 'trained pipeline'))}"),
+                html.Span(f"Model: {pretty_model(model_name)}"),
                 dcc.Graph(figure=risk_gauge(probability), config={"displayModeBar": False}),
             ]
         )

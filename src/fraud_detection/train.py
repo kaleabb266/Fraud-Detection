@@ -19,6 +19,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 from .config import CREDITCARD_FULL_ZIP_PATH, MODELS_DIR, RANDOM_STATE, REPORTS_DIR, TEST_SIZE
 from .data import load_creditcard, load_ecommerce_enriched
+from .portable import export_pipeline
 from .features import (
     ECOMMERCE_CATEGORICAL,
     creditcard_feature_target,
@@ -131,6 +132,15 @@ def train(
     joblib.dump({"dataset": dataset, "model_name": best_name, "pipeline": best_pipe, "features": X.columns.tolist()}, model_path)
     (REPORTS_DIR / f"{dataset}_model_metrics.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     print(f"Saved {best_name} model to {model_path}")
+    try:
+        json_path, _ = export_pipeline(
+            best_pipe,
+            MODELS_DIR / f"{dataset}_model_portable",
+            extra={"dataset": dataset, "model_name": best_name, "features": X.columns.tolist()},
+        )
+        print(f"Saved NumPy-only export to {json_path.with_suffix('')}.{{json,npz}}")
+    except ValueError as exc:
+        print(f"Skipped NumPy-only export: {exc}")
     return model_path
 
 
